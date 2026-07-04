@@ -341,7 +341,7 @@ export default function App() {
       <header className="max-w-2xl mx-auto px-5 pt-8 pb-4">
         <div className="flex items-center gap-2" style={{ color: "var(--brass)" }}>
           <Music size={18} />
-          <span className="text-xs uppercase tracking-wide font-medium">Carnet de bord</span>
+          <span className="text-xs uppercase tracking-wide font-medium">Carnet de bord - By &copy;Hlabs 2026</span>
         </div>
         <h1 className="font-display text-3xl mt-1" style={{ color: "var(--ivory)" }}>
           Phase 1 — Fondations
@@ -463,7 +463,7 @@ export default function App() {
                 <h3 className="font-display text-lg" style={{ color: "var(--ivory)" }}>Notes pour le prof</h3>
               </div>
               <p className="text-sm mb-3" style={{ color: "var(--muted)" }}>
-                Accumule ici tes blocages pendant la semaine — à traiter au cours du mercredi plutôt qu'en dispersant les questions.
+                Accumule ici tes blocages pendant la semaine — à traiter lors de la seance en presentiel plutôt qu'en dispersant les questions.
               </p>
               <div className="flex gap-2 mb-3">
                 <input value={noteInput} onChange={(e) => setNoteInput(e.target.value)} placeholder="Ex : doigté mesure 12, morceau X" className="flex-1" onKeyDown={(e) => e.key === "Enter" && addNote()} />
@@ -537,7 +537,7 @@ export default function App() {
                 <Settings2 size={15} />
                 <span className="text-xs uppercase tracking-wide font-medium">Réglages & Sauvegarde</span>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Date settings */}
                 <div>
@@ -561,7 +561,7 @@ export default function App() {
                     <button className="btn-brass px-3 py-2 text-sm flex items-center gap-1.5 cursor-pointer" onClick={handleExport}>
                       <Download size={14} /> Exporter
                     </button>
-                    
+
                     <label className="btn-ghost px-3 py-2 text-sm flex items-center gap-1.5 cursor-pointer hover:border-[var(--brass)] border">
                       <Upload size={14} />
                       Importer
