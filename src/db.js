@@ -24,8 +24,7 @@ function persist() {
  */
 export async function initDb() {
   SQLInstance = await initSqlJs({
-    locateFile: (file) =>
-      `https://sql.js.org/dist/${file}`,
+    locateFile: (file) => `/${file}`,
   });
 
   // Restaurer depuis localStorage si disponible
