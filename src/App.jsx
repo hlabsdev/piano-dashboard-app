@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import {
   Music, Flame, ChevronDown, ChevronUp, Plus, X, Clock,
   BookOpen, Settings2, Check, MessageSquareText, Trash2,
+  Download, Upload,
 } from "lucide-react";
 import {
   initDb, getSetting, setSetting,
   getAllSessions, addSession as dbAddSession, deleteSession as dbDeleteSession,
   getAllNotes, addNote as dbAddNote, deleteNote as dbDeleteNote,
+  exportDb, importDb,
 } from "./db.js";
 
 /* ------------------------------------------------------------------ */
@@ -255,6 +257,43 @@ export default function App() {
     setNotes(newNotes);
   }
 
+  function handleExport() {
+    const data = exportDb();
+    if (!data) return;
+    const blob = new Blob([data], { type: "application/x-sqlite3" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `piano-dashboard-backup-${new Date().toISOString().slice(0, 10)}.db`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setMessage("Base de données exportée ✓");
+    setTimeout(() => setMessage(""), 2500);
+  }
+
+  function handleImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (evt) {
+      const success = importDb(evt.target.result);
+      if (success) {
+        setStartDate(getSetting("phase1StartDate") || null);
+        setLog(getAllSessions());
+        setNotes(getAllNotes());
+        setMessage("Base importée avec succès ✓");
+      } else {
+        setMessage("Erreur d'import : fichier invalide ✗");
+      }
+      setTimeout(() => setMessage(""), 3000);
+    };
+    reader.readAsArrayBuffer(file);
+    // Reset file input value to allow uploading the same file name again
+    e.target.value = "";
+  }
+
   const rawWeek = getWeekNumber(startDate);
   const week = rawWeek ? Math.min(Math.max(rawWeek, 1), 16) : null;
   const phaseDone = rawWeek && rawWeek > 16;
@@ -494,13 +533,45 @@ export default function App() {
             </div>
 
             <div className="card p-5">
-              <div className="flex items-center gap-2 mb-2" style={{ color: "var(--brass)" }}>
-                <Settings2 size={15} /><span className="text-xs uppercase tracking-wide font-medium">Réglages</span>
+              <div className="flex items-center gap-2 mb-4" style={{ color: "var(--brass)" }}>
+                <Settings2 size={15} />
+                <span className="text-xs uppercase tracking-wide font-medium">Réglages & Sauvegarde</span>
               </div>
-              <p className="text-sm mb-2" style={{ color: "var(--muted)" }}>Date de départ actuelle : <span className="font-mono">{startDate || "non définie"}</span></p>
-              <div className="flex gap-2">
-                <input type="date" value={dateDraft} onChange={(e) => setDateDraft(e.target.value)} />
-                <button className="btn-ghost px-3 py-2 text-sm" onClick={confirmStartDate}>Mettre à jour</button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Date settings */}
+                <div>
+                  <h4 className="text-sm font-medium mb-2" style={{ color: "var(--ivory)" }}>Date de départ</h4>
+                  <p className="text-xs mb-3" style={{ color: "var(--muted)" }}>
+                    Date actuelle : <span className="font-mono text-xs">{startDate || "non définie"}</span>
+                  </p>
+                  <div className="flex gap-2">
+                    <input type="date" value={dateDraft} onChange={(e) => setDateDraft(e.target.value)} className="text-sm flex-1" />
+                    <button className="btn-ghost px-3 py-2 text-sm" onClick={confirmStartDate}>Mettre à jour</button>
+                  </div>
+                </div>
+
+                {/* Import/Export settings */}
+                <div className="border-t md:border-t-0 md:border-l pt-6 md:pt-0 md:pl-6" style={{ borderColor: "var(--line)" }}>
+                  <h4 className="text-sm font-medium mb-2" style={{ color: "var(--ivory)" }}>Base de données SQLite</h4>
+                  <p className="text-xs mb-3" style={{ color: "var(--muted)" }}>
+                    Sauvegarde tes séances et notes dans un fichier ou restaure-les.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button className="btn-brass px-3 py-2 text-sm flex items-center gap-1.5 cursor-pointer" onClick={handleExport}>
+                      <Download size={14} /> Exporter
+                    </button>
+                    
+                    <label className="btn-ghost px-3 py-2 text-sm flex items-center gap-1.5 cursor-pointer hover:border-[var(--brass)] border">
+                      <Upload size={14} />
+                      Importer
+                      <input type="file" accept=".db" onChange={handleImport} className="hidden" />
+                    </label>
+                  </div>
+                  {message && (
+                    <p className="text-xs mt-3 font-medium" style={{ color: "var(--sage)" }}>{message}</p>
+                  )}
+                </div>
               </div>
             </div>
           </>

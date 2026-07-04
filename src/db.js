@@ -6,6 +6,7 @@ import initSqlJs from "sql.js";
 
 const DB_KEY = "piano-dashboard-db";
 let db = null;
+let SQLInstance = null;
 
 /**
  * Sauvegarde le contenu binaire de la DB dans localStorage.
@@ -22,7 +23,7 @@ function persist() {
  * et crée les tables si nécessaire.
  */
 export async function initDb() {
-  const SQL = await initSqlJs({
+  SQLInstance = await initSqlJs({
     locateFile: (file) =>
       `https://sql.js.org/dist/${file}`,
   });
@@ -31,9 +32,9 @@ export async function initDb() {
   const saved = localStorage.getItem(DB_KEY);
   if (saved) {
     const binary = Uint8Array.from(atob(saved), (c) => c.charCodeAt(0));
-    db = new SQL.Database(binary);
+    db = new SQLInstance.Database(binary);
   } else {
-    db = new SQL.Database();
+    db = new SQLInstance.Database();
   }
 
   // Créer les tables si elles n'existent pas
@@ -155,3 +156,32 @@ export function deleteNote(id) {
   persist();
   return getAllNotes();
 }
+
+/* ------------------------------------------------------------------ */
+/* Export / Import                                                    */
+/* ------------------------------------------------------------------ */
+
+export function exportDb() {
+  if (!db) return null;
+  return db.export();
+}
+
+export function importDb(arrayBuffer) {
+  if (!SQLInstance) return false;
+  try {
+    const binary = new Uint8Array(arrayBuffer);
+    const tempDb = new SQLInstance.Database(binary);
+    // On valide que les tables requises existent bien avant de valider l'import
+    tempDb.exec("SELECT 1 FROM settings LIMIT 1");
+    tempDb.exec("SELECT 1 FROM practice_log LIMIT 1");
+    tempDb.exec("SELECT 1 FROM lesson_notes LIMIT 1");
+    
+    db = tempDb;
+    persist();
+    return true;
+  } catch (e) {
+    console.error("Erreur lors de l'import de la base SQLite", e);
+    return false;
+  }
+}
+
