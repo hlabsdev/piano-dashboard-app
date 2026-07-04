@@ -24,7 +24,7 @@ function persist() {
  */
 export async function initDb() {
   SQLInstance = await initSqlJs({
-    locateFile: (file) => `/${file}`,
+    locateFile: (file) => file.endsWith(".wasm") ? "/sql-wasm.wasm" : `/${file}`,
   });
 
   // Restaurer depuis localStorage si disponible
@@ -174,7 +174,7 @@ export function importDb(arrayBuffer) {
     tempDb.exec("SELECT 1 FROM settings LIMIT 1");
     tempDb.exec("SELECT 1 FROM practice_log LIMIT 1");
     tempDb.exec("SELECT 1 FROM lesson_notes LIMIT 1");
-    
+
     db = tempDb;
     persist();
     return true;
