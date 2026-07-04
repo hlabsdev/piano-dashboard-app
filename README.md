@@ -3,7 +3,7 @@
 > Un outil d'accompagnement et de suivi de pratique pianistique quotidien, conçu sur mesure et basé sur un programme d'apprentissage rigoureux de 30 à 36 mois.
 >
 > **Auteur** : © Hlabs 2026
-
+> [Lien vers l'application](https://piano-dashboard-app.onrender.com/)
 ---
 
 ## 📖 Le Projet
