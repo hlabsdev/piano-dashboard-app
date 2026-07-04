@@ -2,6 +2,13 @@ import initSqlJs from "sql.js";
 
 /* ------------------------------------------------------------------ */
 /* SQLite in-browser — persistance via localStorage                    */
+/*                                                                    */
+/* ⚠️ Limites connues (assumées, v1.0 gelée jusqu'au jalon T1) :      */
+/* - localStorage est isolé par appareil/navigateur : les données ne  */
+/*   se synchronisent PAS entre téléphone et laptop. Appareil maître  */
+/*   + export hebdo = le protocole.                                   */
+/* - Les navigateurs peuvent purger localStorage. L'export .db du     */
+/*   mercredi est la sauvegarde de référence.                         */
 /* ------------------------------------------------------------------ */
 
 const DB_KEY = "piano-dashboard-db";
@@ -9,13 +16,40 @@ let db = null;
 let SQLInstance = null;
 
 /**
+ * Encode un Uint8Array en base64 par chunks.
+ * NE PAS remplacer par String.fromCharCode(...arr) : le spread passe
+ * chaque octet comme argument et explose la pile d'appels dès que la
+ * base dépasse ~100 Ko (RangeError), tuant la persistance en silence.
+ */
+function u8ToBase64(u8) {
+  const CHUNK = 0x8000; // 32k octets par appel — sûr pour la pile
+  let binary = "";
+  for (let i = 0; i < u8.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, u8.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+function base64ToU8(str) {
+  const binary = atob(str);
+  const u8 = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) u8[i] = binary.charCodeAt(i);
+  return u8;
+}
+
+/**
  * Sauvegarde le contenu binaire de la DB dans localStorage.
  */
 function persist() {
   if (!db) return;
-  const data = db.export();
-  const str = btoa(String.fromCharCode(...new Uint8Array(data)));
-  localStorage.setItem(DB_KEY, str);
+  try {
+    const data = db.export();
+    localStorage.setItem(DB_KEY, u8ToBase64(new Uint8Array(data)));
+  } catch (e) {
+    // QuotaExceededError ou navigation privée : on ne perd pas la session
+    // en cours (la DB vit en mémoire), mais la persistance a échoué.
+    console.error("Persistance localStorage échouée — exporte ta base .db maintenant", e);
+  }
 }
 
 /**
@@ -24,19 +58,21 @@ function persist() {
  */
 export async function initDb() {
   SQLInstance = await initSqlJs({
-    locateFile: (file) => file.endsWith(".wasm") ? "/sql-wasm.wasm" : `/${file}`,
+    locateFile: (file) => (file.endsWith(".wasm") ? "/sql-wasm.wasm" : `/${file}`),
   });
 
-  // Restaurer depuis localStorage si disponible
   const saved = localStorage.getItem(DB_KEY);
   if (saved) {
-    const binary = Uint8Array.from(atob(saved), (c) => c.charCodeAt(0));
-    db = new SQLInstance.Database(binary);
+    try {
+      db = new SQLInstance.Database(base64ToU8(saved));
+    } catch (e) {
+      console.error("Base locale corrompue — démarrage sur une base vide", e);
+      db = new SQLInstance.Database();
+    }
   } else {
     db = new SQLInstance.Database();
   }
 
-  // Créer les tables si elles n'existent pas
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (
       key   TEXT PRIMARY KEY,
@@ -93,7 +129,7 @@ export function setSetting(key, value) {
 export function getAllSessions() {
   if (!db) return [];
   const res = db.exec(
-    "SELECT id, date, session, minutes, note FROM practice_log ORDER BY id DESC"
+    "SELECT id, date, session, minutes, note FROM practice_log ORDER BY date DESC, id DESC"
   );
   if (res.length === 0) return [];
   return res[0].values.map(([id, date, session, minutes, note]) => ({
@@ -170,7 +206,6 @@ export function importDb(arrayBuffer) {
   try {
     const binary = new Uint8Array(arrayBuffer);
     const tempDb = new SQLInstance.Database(binary);
-    // On valide que les tables requises existent bien avant de valider l'import
     tempDb.exec("SELECT 1 FROM settings LIMIT 1");
     tempDb.exec("SELECT 1 FROM practice_log LIMIT 1");
     tempDb.exec("SELECT 1 FROM lesson_notes LIMIT 1");
@@ -183,4 +218,3 @@ export function importDb(arrayBuffer) {
     return false;
   }
 }
-
